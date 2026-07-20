@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GSRM Personal Sender</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3b3fce">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GSRM Sender">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f5f7ff;--card:#fff;--primary:#3b3fce;--green:#25D366;--green2:#1a9e5c;--red:#dc2626;--text:#1e1e2e;--muted:#6b7280;--border:#e5e7eb;--r:14px;--sh:0 2px 12px rgba(59,63,206,0.08);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Baloo 2',sans-serif;min-height:100vh;}
+.header{background:var(--primary);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
+.header h1{font-size:16px;font-weight:800;flex:1;}
+.tabs{background:#fff;border-bottom:2px solid var(--border);display:flex;overflow-x:auto;padding:0 8px;}
+.tab{padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;color:var(--muted);white-space:nowrap;font-family:'Baloo 2',sans-serif;}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+.container{padding:14px;max-width:700px;margin:0 auto;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--sh);}
+.ct{font-size:13px;font-weight:800;color:var(--primary);margin-bottom:14px;}
+.fg{margin-bottom:12px;}
+.fg label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;}
+input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:'Baloo 2',sans-serif;outline:none;background:#fff;color:var(--text);}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);}
+textarea{resize:vertical;min-height:100px;}
+.btn{padding:10px 16px;border-radius:10px;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:'Baloo 2',sans-serif;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;}
+.bp{background:var(--primary);color:#fff;}
+.bwa{background:var(--green);color:#fff;}
+.bo{background:#fff;border:1.5px solid var(--border);color:var(--text);}
+.br{background:var(--red);color:#fff;}
+.bg{background:var(--green2);color:#fff;}
+.bor{background:#d97706;color:#fff;}
+.bsm{padding:6px 10px;font-size:11px;}
+.bfl{width:100%;justify-content:center;margin-top:10px;}
+.row{display:flex;gap:10px;}
+.row>*{flex:1;}
+.msg-card{background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px;margin-bottom:10px;}
+.msg-card .sname{font-size:13px;font-weight:800;color:var(--primary);margin-bottom:4px;}
+.msg-card .phone{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.msg-preview{background:#fff;border-radius:8px;padding:10px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:#166534;border:1px solid #86efac;}
+.msg-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.absent-card{background:#fff7ed;border:1.5px solid #fed7aa;}
+.absent-card .msg-preview{background:#fff;border-color:#fed7aa;color:#9a3412;}
+.chip{background:#eef2ff;color:var(--primary);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;}
+.si{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:10px;margin-bottom:6px;}
+.sn{width:26px;height:26px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;}
+.grp-hd{font-size:12px;font-weight:800;color:var(--primary);margin-bottom:6px;padding:6px 10px;background:#eef2ff;border-radius:8px;display:flex;justify-content:space-between;align-items:center;}
+.empty{text-align:center;padding:30px;color:var(--muted);}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.info{background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:12px;}
+.success{background:#d1fae5;color:#065f46;padding:10px 14px;border-radius:10px;font-weight:700;}
+.error{background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:10px;font-weight:700;}
+.send-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid var(--border);padding:12px 16px;display:flex;gap:10px;z-index:50;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal.show{display:flex;}
+.modal-box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:400px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span style="font-size:20px;">📨</span>
+  <div style="flex:1;">
+    <h1>GSRM Personal Sender</h1>
+    <div style="font-size:11px;opacity:0.8;">GSRM School, Taranagar</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('send')">📤 Send</div>
+  <div class="tab" onclick="switchTab('students')">👥 Students</div>
+</div>
+
+<!-- SEND TAB -->
+<div id="tab-send" class="tab-content active">
+<div class="container" style="padding-bottom:80px;">
+  <div class="card">
+    <div class="ct">📋 Group Message Paste Karein</div>
+    <div class="info">💡 Teacher ne jo message group me bheja hai, use poora copy karke paste karein. App automatically personal messages banayega.</div>
+    <div class="fg"><label>Class Select Karein</label>
+      <select id="sendClass"><option value="">-- Class --</option></select>
+    </div>
+    <div class="fg"><label>Group Message (Paste karein)</label>
+      <textarea id="groupMsg" rows="10" placeholder="Teacher ka group message yahan paste karein..."></textarea>
+    </div>
+    <button class="btn bp bfl" onclick="processMessage()">⚡ Personal Messages Banayein</button>
+  </div>
+  <div id="processedMessages"></div>
+</div>
+<div class="send-bar" id="sendBar" style="display:none;">
+  <button class="btn bp" style="flex:1;" onclick="sendAllBot()">🚀 Send All via Bot</button>
+  <button class="btn bo" style="flex:0.6;" onclick="document.getElementById('processedMessages').scrollIntoView({behavior:'smooth'})">👁️ Dekho</button>
+</div>
+</div>
+
+<!-- STUDENTS TAB -->
+<div id="tab-students" class="tab-content">
+<div class="container">
+
+  <!-- Add Student -->
+  <div class="card">
+    <div class="ct">➕ Student Add Karein</div>
+    <div class="row">
+      <div class="fg"><label>Class</label><select id="addCls"></select></div>
+      <div class="fg"><label>Student Name</label><input type="text" id="addName" placeholder="Poora naam"></div>
+    </div>
+    <div class="row">
+      <div class="fg"><label>Parent Mobile 1</label><input type="tel" id="addMob1" placeholder="10 digit" maxlength="10"></div>
+      <div class="fg"><label>Parent Mobile 2 (Optional)</label><input type="tel" id="addMob2" placeholder="10 digit" maxlength="10"></div>
+    </div>
+    <button class="btn bp bfl" onclick="addStudent()">➕ Add Student</button>
+    <div id="addResult" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <!-- Bulk Import -->
+  <div class="card">
+    <div class="ct">📥 Bulk Import</div>
+    <div class="info">Format: Name , Mobile1 , Mobile2(optional)<br>Example: Rahul Sharma , 9876543210 , 9988776655</div>
+    <div class="fg"><label>Class</label><select id="bulkCls"></select></div>
+    <div class="fg"><label>Data Paste Karein (ek line = ek student)</label>
+      <textarea id="bulkData" placeholder="Rahul Sharma , 9876543210&#10;Priya Verma , 9123456780 , 9988776655"></textarea>
+    </div>
+    <button class="btn bp bfl" onclick="bulkImport()">📥 Import All</button>
+    <div id="bulkResult" style="display:none;margin-top:10px;"></div>
+  </div>
+
+  <!-- Student List -->
+  <div class="card">
+    <div class="sh">
+      <div class="ct" style="margin:0;">👥 Students <span id="syncBadge" style="font-size:11px;color:var(--green2);margin-left:6px;font-weight:700;"></span></div>
+    </div>
+    <div class="row" style="margin-bottom:10px;">
+      <select id="filterCls" onchange="renderStudents()"></select>
+      <input type="text" id="searchName" placeholder="🔍 Naam se search..." oninput="renderStudents()" style="flex:1;">
+    </div>
+    <div id="studentList"><div class="empty">⏳ Loading...</div></div>
+  </div>
+</div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal" id="editModal">
+  <div class="modal-box">
+    <div style="font-size:15px;font-weight:800;color:var(--primary);margin-bottom:14px;">✏️ Student Edit Karein</div>
+    <input type="hidden" id="editId">
+    <div class="fg"><label>Name</label><input type="text" id="editName"></div>
+    <div class="fg"><label>Class</label><select id="editCls"></select></div>
+    <div class="fg"><label>Parent Mobile 1</label><input type="tel" id="editMob1" maxlength="10"></div>
+    <div class="fg"><label>Parent Mobile 2 (Optional)</label><input type="tel" id="editMob2" maxlength="10"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn bp" style="flex:1;" onclick="saveEdit()">✅ Save</button>
+      <button class="btn bo" style="flex:1;" onclick="closeEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const SCHOOL = 'GSRM SCHOOL';
+const SCHOOL_FULL = 'GSRM SCHOOL & COLLEGE';
+const ADDRESS = 'Near Anandsinghpura Bus Stand, TARANAGAR';
+const PHONE = '+91 8696235387';
+const SCHOOL_ADDR = 'Churu Road, Taranagar';
+const COLLECTION = 'ps_students'; // Alag collection - teacher portal se bilkul alag
+
+const CLASSES = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th',
+  '11th Science','11th Arts','12th Science','12th Arts'];
+
+// Firebase - same project, ALAG collection (ps_students)
+firebase.initializeApp({
+  apiKey:"AIzaSyAQXntbymEadxTJiwzdilwVqUTtEpklSj0",
+  authDomain:"gsrm-suits.firebaseapp.com",
+  projectId:"gsrm-suits",
+  storageBucket:"gsrm-suits.firebasestorage.app",
+  messagingSenderId:"967726400472",
+  appId:"1:967726400472:web:d07136f6eacebef3f4a8ad"
+});
+const db = firebase.firestore();
+
+let students = [];
+let processedMsgs = [];
+
+// ── INIT ──────────────────────────────────────────────────────
+function init(){
+  ['sendClass','addCls','bulkCls','editCls'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    CLASSES.forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c; o.textContent=c; el.appendChild(o);
+    });
+  });
+  document.getElementById('filterCls').innerHTML='<option value="">All Classes</option>'+CLASSES.map(c=>`<option>${c}</option>`).join('');
+  loadStudents();
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  ['send','students'].forEach((t,i)=>{ if(t===tab) document.querySelectorAll('.tab')[i].classList.add('active'); });
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ── LOAD STUDENTS ─────────────────────────────────────────────
+async function loadStudents(){
+  const badge=document.getElementById('syncBadge');
+  badge.textContent='🔄 Loading...';
+  try{
+    const snap=await db.collection(COLLECTION).orderBy('class').orderBy('name').get();
+    students=snap.docs.map(d=>({id:d.id,...d.data()}));
+    badge.textContent='✅ '+students.length+' students';
+    renderStudents();
+  }catch(e){
+    badge.textContent='❌ Error: '+e.message;
+    console.error(e);
+  }
+}
+
+// ── ADD STUDENT ───────────────────────────────────────────────
+async function addStudent(){
+  const cls=document.getElementById('addCls').value;
+  const name=document.getElementById('addName').value.trim();
+  const mob1=document.getElementById('addMob1').value.trim().replace(/\D/g,'');
+  const mob2=document.getElementById('addMob2').value.trim().replace(/\D/g,'');
+  if(!cls){showResult('addResult','error','❌ Class select karein!');return;}
+  if(!name){showResult('addResult','error','❌ Naam likhen!');return;}
+  if(!mob1||mob1.length!==10){showResult('addResult','error','❌ Mobile 1 exactly 10 digits hona chahiye!');return;}
+  if(mob2&&mob2.length!==10){showResult('addResult','error','❌ Mobile 2 bhi 10 digits hona chahiye!');return;}
+  try{
+    await db.collection(COLLECTION).add({name,class:cls,mob1,mob2:mob2||''});
+    document.getElementById('addName').value='';
+    document.getElementById('addMob1').value='';
+    document.getElementById('addMob2').value='';
+    await loadStudents();
+    showResult('addResult','success','✅ '+name+' add ho gaye!');
+  }catch(e){showResult('addResult','error','❌ Error: '+e.message);}
+}
+
+// ── BULK IMPORT ───────────────────────────────────────────────
+async function bulkImport(){
+  const cls=document.getElementById('bulkCls').value;
+  const raw=document.getElementById('bulkData').value.trim();
+  if(!cls){showResult('bulkResult','error','❌ Class select karein!');return;}
+  if(!raw){showResult('bulkResult','error','❌ Data paste karein!');return;}
+  const lines=raw.split('\n').map(l=>l.trim()).filter(l=>l);
+  const existing=students.filter(s=>s.class===cls).map(s=>s.name.toLowerCase());
+  let added=0,skipped=0,errors=0;
+  for(const line of lines){
+    const parts=line.split(',').map(p=>p.trim());
+    const name=parts[0];
+    const mob1=parts[1]?.replace(/\D/g,'').slice(-10)||'';
+    const mob2=parts[2]?.replace(/\D/g,'').slice(-10)||'';
+    if(!name||!mob1||mob1.length!==10){errors++;continue;}
+    if(existing.includes(name.toLowerCase())){skipped++;continue;}
+    try{
+      await db.collection(COLLECTION).add({name,class:cls,mob1,mob2});
+      added++;
+    }catch(e){errors++;}
+  }
+  await loadStudents();
+  document.getElementById('bulkData').value='';
+  showResult('bulkResult','success','✅ Added: '+added+' | Skipped: '+skipped+' | Errors: '+errors);
+}
+
+// ── RENDER STUDENTS ───────────────────────────────────────────
+function renderStudents(){
+  const fc=document.getElementById('filterCls').value;
+  const search=document.getElementById('searchName').value.toLowerCase().trim();
+  let list=fc?students.filter(s=>s.class===fc):students;
+  if(search) list=list.filter(s=>s.name.toLowerCase().includes(search)||s.mob1?.includes(search));
+  const el=document.getElementById('studentList');
+  if(!list.length){el.innerHTML='<div class="empty">📭 Koi student nahi mila.</div>';return;}
+  const grp={};
+  list.forEach(s=>{if(!grp[s.class])grp[s.class]=[];grp[s.class].push(s);});
+  el.innerHTML=Object.entries(grp).map(([cls,sts])=>`
+    <div style="margin-bottom:16px;">
+      <div class="grp-hd"><span>📚 ${cls}</span><span class="chip">${sts.length} students</span></div>
+      ${sts.map((s,i)=>`
+        <div class="si">
+          <div class="sn">${i+1}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">${s.name}</div>
+            <div style="font-size:11px;color:var(--muted);">📱 ${s.mob1}${s.mob2?' | '+s.mob2:''}</div>
+          </div>
+          <button class="btn bg bsm" onclick="openEdit('${s.id}')">✏️</button>
+          <button class="btn br bsm" onclick="delStudent('${s.id}','${s.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+// ── EDIT ──────────────────────────────────────────────────────
+function openEdit(id){
+  const s=students.find(x=>x.id===id);if(!s)return;
+  document.getElementById('editId').value=id;
+  document.getElementById('editName').value=s.name;
+  document.getElementById('editCls').value=s.class;
+  document.getElementById('editMob1').value=s.mob1||'';
+  document.getElementById('editMob2').value=s.mob2||'';
+  document.getElementById('editModal').classList.add('show');
+}
+function closeEdit(){ document.getElementById('editModal').classList.remove('show'); }
+async function saveEdit(){
+  const id=document.getElementById('editId').value;
+  const name=document.getElementById('editName').value.trim();
+  const cls=document.getElementById('editCls').value;
+  const mob1=document.getElementById('editMob1').value.trim().replace(/\D/g,'');
+  const mob2=document.getElementById('editMob2').value.trim().replace(/\D/g,'');
+  if(!name||!cls||mob1.length!==10){alert('Naam, Class aur Mobile 1 (10 digits) zaruri hai!');return;}
+  try{
+    await db.collection(COLLECTION).doc(id).update({name,class:cls,mob1,mob2:mob2||''});
+    closeEdit();
+    await loadStudents();
+    alert('✅ Student update ho gaya!');
+  }catch(e){alert('Error: '+e.message);}
+}
+async function delStudent(id,name){
+  if(!confirm('Delete "'+name+'"? Yeh action undo nahi hogi!'))return;
+  try{
+    await db.collection(COLLECTION).doc(id).delete();
+    await loadStudents();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+// ── PROCESS GROUP MESSAGE ─────────────────────────────────────
+function processMessage(){
+  const cls=document.getElementById('sendClass').value;
+  const msg=document.getElementById('groupMsg').value.trim();
+  if(!cls){alert('Pehle class select karein!');return;}
+  if(!msg){alert('Group message paste karein!');return;}
+  const classStudents=students.filter(s=>s.class===cls);
+  if(!classStudents.length){alert('Is class ke koi students nahi hain!\n\nPehle Students tab me add karein.');return;}
+  const type=detectType(msg);
+  const parsed=parseMessage(msg,type);
+  processedMsgs=[];
+  if(type==='unit_test'||type==='monthly_test'){
+    classStudents.forEach(student=>{
+      const match=findMark(student.name,parsed.marks);
+      if(match!==null){
+        const isAbsent=match.toLowerCase()==='a'||match.toLowerCase()==='absent';
+        const m=isAbsent?buildAbsentMsg(student.name,cls,parsed):buildMarksMsg(student.name,cls,parsed,match,type);
+        processedMsgs.push({name:student.name,mob1:student.mob1,mob2:student.mob2||'',message:m,absent:isAbsent});
+      }
+    });
+  } else if(type==='homework'){
+    if(parsed.names.length>0){
+      parsed.names.forEach(hwName=>{
+        const s=findStudent(hwName,classStudents);
+        if(s) processedMsgs.push({name:s.name,mob1:s.mob1,mob2:s.mob2||'',message:buildHWMsg(s.name,parsed),absent:false});
+      });
+    } else {
+      classStudents.forEach(s=>{
+        processedMsgs.push({name:s.name,mob1:s.mob1,mob2:s.mob2||'',message:buildHWMsg(s.name,parsed),absent:false});
+      });
+    }
+  } else {
+    classStudents.forEach(s=>{
+      const m=msg.replace(/\{student_name\}/gi,s.name).replace(/\{name\}/gi,s.name);
+      processedMsgs.push({name:s.name,mob1:s.mob1,mob2:s.mob2||'',message:m,absent:false});
+    });
+  }
+  renderMsgs(type);
+}
+
+function detectType(msg){
+  const m=msg.toLowerCase();
+  if(m.includes('homework')||m.includes('गृहकार्य')||m.includes('होमवर्क')) return 'homework';
+  if(m.includes('test notice')||m.includes('टेस्ट सूचना')||m.includes('syllabus')||m.includes('पाठ्यक्रम')) return 'notice';
+  // Monthly test: has "total marks" OR "month:" line (not just "monthly test number")
+  if(m.includes('total marks:')||m.includes('month:')) return 'monthly_test';
+  if(/\d+\.\s+\S+.*=/.test(msg)||m.includes('m.m.')||m.includes('max marks')||m.includes('अंक')) return 'unit_test';
+  return 'generic';
+}
+
+function parseMessage(msg,type){
+  const lines=msg.split('\n').map(l=>l.trim()).filter(l=>l);
+  const r={subject:'',date:'',mm:'',total:'',month:'',tests:'',chapter:'',testNum:'',marks:[],names:[]};
+
+  lines.forEach(line=>{
+    const clean=line.replace(/\*/g,'').trim();
+    const ll=clean.toLowerCase();
+
+    // Subject
+    if(ll.startsWith('subject:')||ll.startsWith('विषय:')){
+      r.subject=clean.split(':').slice(1).join(':').trim();
+    }
+    // Max Marks / MM
+    if(ll.includes('max marks')||ll.startsWith('m.m.')){
+      const m=clean.match(/(\d+)\s*$/);if(m) r.mm=m[1];
+    }
+    // Total Marks (monthly)
+    if(ll.startsWith('total marks:')){
+      const m=clean.match(/(\d+)\s*$/);if(m) r.total=m[1];
+    }
+    // Test Date
+    if(ll.startsWith('test date:')||ll.startsWith('date:')||ll.includes('दिनांक')){
+      const d=clean.match(/[\d]{1,2}[-\/][\d]{1,2}[-\/][\d]{2,4}/);
+      if(d) r.date=d[0];
+    }
+    // Month
+    if(ll.startsWith('month:')){
+      r.month=clean.split(':').slice(1).join(':').trim();
+    }
+    // Total Tests
+    if(ll.startsWith('total number')||ll.includes('total tests')){
+      const m=clean.match(/(\d+)/);if(m) r.tests=m[1];
+    }
+    // Monthly/Unit Test Number
+    if(ll.includes('monthly test number')||ll.includes('test number')){
+      r.testNum=clean.split(':').slice(1).join(':').trim();
+    }
+
+    // Homework subject/chapter from Hindi format
+    if(type==='homework'){
+      const subMatch=clean.match(/आज\s+([A-Za-z\u0900-\u097F]+)\s+का/);
+      if(subMatch&&!r.subject) r.subject=subMatch[1];
+      const chMatch=clean.match(/[गृहकार्यhoमेहवर्क]+\s*\(([^)]+)\)/i)||clean.match(/\(([^)]+)\)/);
+      if(chMatch&&!r.chapter) r.chapter=chMatch[1];
+    }
+
+    // Parse marks: "1. Name = 10" or "*1. Name = 10*"
+    const marksM=clean.match(/^(\d+)\.\s+(.+?)\s*=\s*([A-Za-z0-9\/]+)\s*$/);
+    if(marksM){
+      r.marks.push({name:marksM[2].trim(),marks:marksM[3].trim()});
+      return;
+    }
+    // Homework names: "1. Name"
+    const nameM=clean.match(/^(\d+)\.\s+([\u0900-\u097FA-Za-z][\u0900-\u097FA-Za-z\s\.]+)$/);
+    if(nameM&&!marksM){
+      const nm=nameM[2].trim();
+      if(!nm.toLowerCase().includes('school')&&!nm.toLowerCase().includes('gsrm')&&nm.length>1){
+        r.names.push(nm);
+      }
+    }
+  });
+  return r;
+}
+
+function findMark(sName,marks){
+  const sn=sName.toLowerCase().replace(/\s+/g,' ').trim();
+  for(const m of marks){
+    const mn=m.name.toLowerCase().replace(/\s+/g,' ').trim();
+    if(mn===sn||sn.includes(mn)||mn.includes(sn)) return m.marks;
+    if(sn.split(' ')[0]===mn.split(' ')[0]&&sn.split(' ')[0].length>2) return m.marks;
+  }
+  return null;
+}
+
+function findStudent(hwName,classStudents){
+  const hn=hwName.toLowerCase().trim();
+  return classStudents.find(s=>{
+    const sn=s.name.toLowerCase().trim();
+    return sn===hn||sn.includes(hn)||hn.includes(sn)||(sn.split(' ')[0]===hn.split(' ')[0]&&sn.split(' ')[0].length>2);
+  });
+}
+
+function buildMarksMsg(name,cls,p,marks,type){
+  if(type==='monthly_test'){
+    // Handle "22/100" format - extract just obtained marks
+  const marksOnly=marks.includes('/')?marks.split('/')[0]:marks;
+  const totalFromMarks=marks.includes('/')?marks.split('/')[1]:'';
+  const totalMarks=p.total||totalFromMarks||'';
+  return `सम्माननीय अभिभावक महोदय/महोदया,\n\nनमस्ते।\n\nआपको सूचित किया जाता है कि आपके पुत्र/पुत्री ${name} (कक्षा–${cls}) ने ${p.month||''} माह के ${p.subject||''} के Monthly Test में ${totalMarks} में से ${marksOnly} अंक प्राप्त किए हैं।${p.tests?'\n(कुल टेस्ट: '+p.tests+')':''}\n\nकृपया अपने बच्चे को नियमित अध्ययन हेतु प्रेरित करें।\n\nसादर,\nGSRM SCHOOL\n(Churu Road, Taranagar)\nContact: +91 8696235387`;
+  }
+  const testInfo=p.testNum?` (Test No. ${p.testNum})`:'';
+  return `सम्माननीय अभिभावक महोदय/महोदया,\n\nनमस्ते।\n\nआपको सूचित किया जाता है कि आपके पुत्र/पुत्री ${name} (कक्षा–${cls}) ने दिनांक: ${p.date||''} को आयोजित ${p.subject||''}${testInfo} के टेस्ट में ${p.mm||''} में से ${marks} अंक प्राप्त किए हैं।\n\nकृपया अपने बच्चे को नियमित अध्ययन हेतु प्रेरित करें।\n\nसादर,\nGSRM SCHOOL\n(Churu Road, Taranagar)\nContact: +91 8696235387`;
+}
+
+function buildAbsentMsg(name,cls,p){
+  const testInfoA=p.testNum?` (Test No. ${p.testNum})`:'';
+  return `सम्माननीय अभिभावक महोदय/महोदया,\n\nनमस्ते।\n\nआपको सूचित किया जाता है कि आपके पुत्र/पुत्री ${name} (कक्षा–${cls}) दिनांक: ${p.date||''} को आयोजित ${p.subject||''}${testInfoA} के टेस्ट में अनुपस्थित रहा/रही।\n\nकृपया अपने बच्चे को नियमित अध्ययन हेतु प्रेरित करें।\n\nसादर,\nGSRM SCHOOL\n(Churu Road, Taranagar)\nContact: +91 8696235387`;
+}
+
+function buildHWMsg(name,p){
+  return `सम्माननीय अभिभावक,\n\nआपको यह अवगत कराया जाता है कि आपका पुत्र/पुत्री ${name} ने आज ${p.subject||''} का होमवर्क${p.chapter?' ('+p.chapter+')':''} पूरा नहीं किया है।\n\nहम आपसे विनम्र अनुरोध करते हैं कि कृपया इस विषय पर ध्यान दें और सुनिश्चित करें कि भविष्य में होमवर्क समय पर पूरा हो ताकि बच्चे की सीखने की प्रक्रिया सुचारू रूप से चल सके।\n\nसादर,\nGSRM SCHOOL & COLLEGE\nNear Anandsinghpura Bus Stand, TARANAGAR\n+918696235387`;
+}
+
+function renderMsgs(type){
+  const el=document.getElementById('processedMessages');
+  if(!processedMsgs.length){
+    el.innerHTML='<div class="card"><div class="empty">⚠️ Koi student match nahi hua.<br><br>Tip: Student names aur group message ke names same hone chahiye.</div></div>';
+    document.getElementById('sendBar').style.display='none';
+    return;
+  }
+  const label={'unit_test':'Unit Test','monthly_test':'Monthly Test','homework':'Homework','notice':'Notice','generic':'Message'}[type]||'Message';
+  el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:13px;font-weight:800;color:var(--green2);">✅ ${processedMsgs.length} Messages Ready</span>
+    <span class="chip">${label}</span>
+  </div></div>`+processedMsgs.map((m,i)=>{
+    const wa1='https://wa.me/91'+m.mob1+'?text='+encodeURIComponent(m.message);
+    const wa2=m.mob2?'https://wa.me/91'+m.mob2+'?text='+encodeURIComponent(m.message):'';
+    return `<div class="msg-card ${m.absent?'absent-card':''}">
+      <div class="sname">${i+1}. ${m.name} ${m.absent?'⚠️ Absent':''}</div>
+      <div class="phone">📱 ${m.mob1}${m.mob2?' | '+m.mob2:''}</div>
+      <div class="msg-preview">${m.message}</div>
+      <div class="msg-actions">
+        <a href="${wa1}" target="_blank" class="btn bwa bsm">📱 WhatsApp</a>
+        ${wa2?`<a href="${wa2}" target="_blank" class="btn bwa bsm">📱 WA 2</a>`:''}
+        <button class="btn bo bsm" onclick="copyMsg(${i})">📋 Copy</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('sendBar').style.display='flex';
+  el.scrollIntoView({behavior:'smooth'});
+}
+
+function copyMsg(i){
+  const t=processedMsgs[i].message;
+  navigator.clipboard.writeText(t).then(()=>alert('✅ Copy ho gaya!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=t;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);alert('✅ Copy ho gaya!');
+  });
+}
+
+async function sendAllBot(){
+  if(!processedMsgs.length)return;
+  const list=[];
+  processedMsgs.forEach(m=>{
+    if(m.mob1) list.push({phone:m.mob1,message:m.message,name:m.name});
+    if(m.mob2) list.push({phone:m.mob2,message:m.message,name:m.name+' (2)'});
+  });
+  try{
+    const res=await fetch('http://localhost:3000/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(list)});
+    const data=await res.json();
+    if(data.ok) alert('✅ '+list.length+' messages bot ko bhej diye!\nTerminal me progress dekho.');
+    else alert('❌ '+data.error);
+  }catch(e){
+    alert('❌ Bot se connect nahi ho paya!\n\nCheck karein:\n1. Start-Bot.bat chal raha hai?\n2. "Bot ready hai" aaya?\n\nManual WA buttons use karein.');
+  }
+}
+
+function showResult(id,type,msg){
+  const el=document.getElementById(id);
+  el.style.display='block';
+  el.innerHTML='<div class="'+type+'">'+msg+'</div>';
+  setTimeout(()=>el.style.display='none',4000);
+}
+
+init();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

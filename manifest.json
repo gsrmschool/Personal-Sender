@@ -1,0 +1,14 @@
+{
+  "name": "GSRM Personal Sender",
+  "short_name": "GSRM Sender",
+  "description": "GSRM School Personal WhatsApp Message Sender",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f7ff",
+  "theme_color": "#3b3fce",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
