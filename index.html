@@ -458,8 +458,18 @@ function findMark(sName,marks){
 
 function findStudent(hwName,classStudents){
   const hn=hwName.toLowerCase().replace(/\s+/g,' ').trim();
-  // SIRF EXACT MATCH
-  return classStudents.find(s=>s.name.toLowerCase().replace(/\s+/g,' ').trim()===hn);
+  // Step 1: Exact match
+  var exact=classStudents.find(function(s){ return s.name.toLowerCase().replace(/\s+/g,' ').trim()===hn; });
+  if(exact) return exact;
+  // Step 2: Case-insensitive full name match only
+  return classStudents.find(function(s){
+    var sn=s.name.toLowerCase().replace(/\s+/g,' ').trim();
+    // Both must be equal length words - no partial
+    var snWords=sn.split(' ');
+    var hnWords=hn.split(' ');
+    if(snWords.length!==hnWords.length) return false;
+    return snWords.every(function(w,i){ return w===hnWords[i]; });
+  });
 }
 
 function buildMarksMsg(name,cls,p,marks,type){
