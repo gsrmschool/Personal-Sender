@@ -429,7 +429,7 @@ function parseMessage(msg,type){
     }
 
     // Parse marks: "1. Name = 10" or "*1. Name = 10*"
-    const marksM=clean.match(/^(\d+)\.\s+(.+?)\s*=\s*([A-Za-z0-9\/]+)\s*$/);
+    const marksM=clean.match(/^(\d+)\.?\s+(.+?)\s*=\s*([A-Za-z0-9\.\/]+)\s*$/);
     if(marksM){
       r.marks.push({name:marksM[2].trim(),marks:marksM[3].trim()});
       return;
@@ -448,7 +448,7 @@ function parseMessage(msg,type){
 
 function findMark(sName,marks){
   const sn=sName.toLowerCase().replace(/\s+/g,' ').trim();
-  // SIRF EXACT MATCH - koi bhi partial match nahi
+  // SIRF EXACT MATCH - poora naam same hona chahiye
   for(const m of marks){
     const mn=m.name.toLowerCase().replace(/\s+/g,' ').trim();
     if(mn===sn) return m.marks;
