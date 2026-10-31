@@ -6,8 +6,7 @@
 <title>GSRM Personal Sender</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3b3fce">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GSRM Sender">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -64,6 +63,27 @@ textarea{resize:vertical;min-height:100px;}
 .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:20px;}
 .modal.show{display:flex;}
 .modal-box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:400px;}
+
+#printHost{display:none;}
+.reg-wrap{overflow-x:auto;}
+table.reg{border-collapse:collapse;width:100%;min-width:560px;font-family:Arial,sans-serif;font-size:12px;color:#000;background:#fff;}
+table.reg td{border:1px solid #333;padding:4px 5px;text-align:center;height:24px;}
+.reg-title{font-weight:800;font-size:14px;padding:8px!important;}
+.reg-l{text-align:left!important;}
+.reg-h{font-weight:700;}
+.reg-name{text-align:left!important;white-space:nowrap;}
+.reg-date{text-align:right!important;font-size:10px;}
+.reg-pct{font-size:9px;color:#555;}
+table.reg td.reg-rankcol{border:none!important;text-align:left!important;font-size:11px;color:#c00;white-space:nowrap;}
+.reg-sign{display:flex;justify-content:space-between;margin-top:14px;font-size:11px;font-family:Arial,sans-serif;}
+@page{size:A4;margin:10mm;}
+@media print{
+ body{background:#fff;}
+ body>*:not(#printHost){display:none!important;}
+ #printHost{display:block!important;}
+ table.reg{min-width:0;}
+ table.reg td{height:21px;}
+}
 </style>
 </head>
 <body>
@@ -79,6 +99,7 @@ textarea{resize:vertical;min-height:100px;}
 <div class="tabs">
   <div class="tab active" onclick="switchTab('send')">📤 Send</div>
   <div class="tab" onclick="switchTab('students')">👥 Students</div>
+  <div class="tab" onclick="switchTab('records')">📒 Records</div>
 </div>
 
 <!-- SEND TAB -->
@@ -148,6 +169,24 @@ textarea{resize:vertical;min-height:100px;}
 </div>
 </div>
 
+<div id="printHost"></div>
+<!-- RECORDS TAB -->
+<div id="tab-records" class="tab-content">
+<div class="container" style="padding-bottom:40px;">
+  <div class="card">
+    <div class="ct">📒 Test Record Register</div>
+    <div class="row">
+      <div class="fg"><label>Class</label><select id="recCls" onchange="recLoad()"></select></div>
+      <div class="fg"><label>Month</label><input type="month" id="recMonth" onchange="recLoad()"></div>
+    </div>
+    <div class="fg"><label>Subject</label><select id="recSub" onchange="recRender()"><option value="">-- Subject --</option></select></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;"><input type="checkbox" id="recPct" checked onchange="recRender()" style="width:auto;"> Total ke neeche percent dikhayein</label>
+  </div>
+  <div id="recView"></div>
+  <div id="recActions" style="display:none;"><button class="btn bp bfl" onclick="recPrint()">🖨️ PDF / Print (Save as PDF chunein)</button></div>
+</div>
+</div>
+
 <!-- EDIT MODAL -->
 <div class="modal" id="editModal">
   <div class="modal-box">
@@ -189,6 +228,8 @@ const db = firebase.firestore();
 
 let students = [];
 let processedMsgs = [];
+let lastRec = null;
+let recCur = null;
 
 // ── INIT ──────────────────────────────────────────────────────
 function init(){
@@ -208,8 +249,9 @@ function init(){
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  ['send','students'].forEach((t,i)=>{ if(t===tab) document.querySelectorAll('.tab')[i].classList.add('active'); });
+  ['send','students','records'].forEach((t,i)=>{ if(t===tab) document.querySelectorAll('.tab')[i].classList.add('active'); });
   document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='records') recInit();
 }
 
 // ── LOAD STUDENTS ─────────────────────────────────────────────
@@ -342,6 +384,7 @@ function processMessage(){
   if(!classStudents.length){alert('Is class ke koi students nahi hain!\n\nPehle Students tab me add karein.');return;}
   const type=detectType(msg);
   const parsed=parseMessage(msg,type);
+  lastRec={cls:cls,parsed:parsed,type:type};
   processedMsgs=[];
   if(type==='unit_test'||type==='monthly_test'){
     classStudents.forEach(student=>{
@@ -349,7 +392,7 @@ function processMessage(){
       if(match!==null){
         const isAbsent=match.toLowerCase()==='a'||match.toLowerCase()==='absent';
         const m=isAbsent?buildAbsentMsg(student.name,cls,parsed):buildMarksMsg(student.name,cls,parsed,match,type);
-        processedMsgs.push({name:student.name,mob1:student.mob1,mob2:student.mob2||'',message:m,absent:isAbsent});
+        processedMsgs.push({name:student.name,mob1:student.mob1,mob2:student.mob2||'',message:m,absent:isAbsent,mark:match});
       }
     });
   } else if(type==='homework'){
@@ -518,6 +561,7 @@ function renderMsgs(type){
       </div>
     </div>`;
   }).join('');
+  el.insertAdjacentHTML('afterbegin',recPanelHtml(type));
   document.getElementById('sendBar').style.display='flex';
   el.scrollIntoView({behavior:'smooth'});
 }
@@ -555,14 +599,162 @@ function showResult(id,type,msg){
   setTimeout(()=>el.style.display='none',4000);
 }
 
+// ===== RECORD REGISTER =====
+var MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var recDocs=[];
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function recOrd(n){return n===1?'1st':n===2?'2nd':n===3?'3rd':n+'th';}
+function recFmt(x){return String(Math.round(x*10)/10);}
+function recDateParts(d){return (d||'').match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);}
+function recMonthKey(d){var m=recDateParts(d);if(!m)return null;var y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+('0'+m[2]).slice(-2);}
+function recShortDate(d){var m=recDateParts(d);if(!m)return d||'';return ('0'+m[1]).slice(-2)+'/'+('0'+m[2]).slice(-2)+'/'+m[3].slice(-2);}
+function recDocId(cls,sub,mk){return (cls+'__'+sub+'__'+mk).toLowerCase().replace(/\s+/g,'_');}
+
+function recPanelHtml(type){
+  if(type!=='unit_test'||!lastRec) return '';
+  var p=lastRec.parsed;
+  var testNo=parseInt(p.testNum);
+  var ok=p.subject&&p.mm&&!isNaN(testNo)&&recMonthKey(p.date);
+  var norm=function(s){return s.toLowerCase().replace(/\s+/g,' ').trim();};
+  var have=processedMsgs.map(function(m){return norm(m.name);});
+  var miss=p.marks.filter(function(x){return have.indexOf(norm(x.name))===-1;}).map(function(x){return x.name;});
+  return '<div class="card" style="border:2px solid #3b3fce;">'
+    +'<div style="font-size:13px;font-weight:800;color:var(--primary);margin-bottom:6px;">📒 Record Register me Save</div>'
+    +(ok?'<div style="font-size:12px;margin-bottom:8px;">Class '+esc(lastRec.cls)+' • '+esc(p.subject)+' • Test '+testNo+' • M.M. '+esc(p.mm)+' • '+esc(p.date)+'</div>'
+        :'<div class="error" style="margin-bottom:8px;">Message me Subject / M.M. / Test Number / Date puri nahi mili, isliye save nahi ho sakta.</div>')
+    +(miss.length?'<div class="info">⚠️ '+miss.length+' naam student list se match nahi hue (ye save nahi honge): '+esc(miss.join(', '))+'</div>':'')
+    +(ok?'<button class="btn bg bfl" onclick="saveRecord()">💾 Record me Save Karein</button>':'')
+    +'</div>';
+}
+
+async function saveRecord(){
+  if(!lastRec){alert('Pehle messages banayein!');return;}
+  var p=lastRec.parsed,cls=lastRec.cls;
+  var testNo=parseInt(p.testNum),mk=recMonthKey(p.date);
+  if(!p.subject||!p.mm||isNaN(testNo)||!mk){alert('Subject, M.M., Test Number ya Date message me nahi mila.');return;}
+  var marks=processedMsgs.filter(function(m){return m.mark!==undefined;}).map(function(m){return {n:m.name,v:String(m.mark)};});
+  if(!marks.length){alert('Save karne ke liye koi matched student nahi hai.');return;}
+  var ref=db.collection('ps_records').doc(recDocId(cls,p.subject,mk));
+  try{
+    var snap=await ref.get();
+    var data=snap.exists?snap.data():{};
+    var tests=data.tests||{};
+    if(tests[testNo]&&!confirm('Test '+testNo+' pehle se saved hai. Purane number replace karein?')) return;
+    tests[testNo]={date:p.date,mm:Number(p.mm),marks:marks};
+    await ref.set({class:cls,subject:data.subject||p.subject,month:mk,tests:tests,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    alert('✅ Record save ho gaya: Class '+cls+' • '+p.subject+' • Test '+testNo+' ('+marks.length+' students)');
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function recInit(){
+  var c=document.getElementById('recCls');
+  if(!c.options.length) c.innerHTML='<option value="">-- Class --</option>'+CLASSES.map(function(x){return '<option>'+x+'</option>';}).join('');
+  var m=document.getElementById('recMonth');
+  if(!m.value){var n=new Date();m.value=n.getFullYear()+'-'+('0'+(n.getMonth()+1)).slice(-2);}
+}
+
+async function recLoad(){
+  var cls=document.getElementById('recCls').value,mk=document.getElementById('recMonth').value;
+  var sel=document.getElementById('recSub'),keep=sel.value;
+  recDocs=[];recCur=null;
+  sel.innerHTML='<option value="">-- Subject --</option>';
+  document.getElementById('recView').innerHTML='';
+  document.getElementById('recActions').style.display='none';
+  if(!cls||!mk) return;
+  try{
+    var snap=await db.collection('ps_records').where('class','==',cls).where('month','==',mk).get();
+    recDocs=snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    if(!recDocs.length){document.getElementById('recView').innerHTML='<div class="card"><div class="empty">📭 Is class aur month ka koi record save nahi hai.</div></div>';return;}
+    recDocs.sort(function(a,b){return a.subject.localeCompare(b.subject);});
+    sel.innerHTML='<option value="">-- Subject --</option>'+recDocs.map(function(d){return '<option>'+esc(d.subject)+'</option>';}).join('');
+    if(recDocs.length===1) sel.value=recDocs[0].subject;
+    else if(keep&&recDocs.some(function(d){return d.subject===keep;})) sel.value=keep;
+    recRender();
+  }catch(e){document.getElementById('recView').innerHTML='<div class="card"><div class="error">Error: '+esc(e.message)+'</div></div>';}
+}
+
+function recTable(d,showPct){
+  var tk=Object.keys(d.tests).map(Number).sort(function(a,b){return a-b;});
+  var cols=Math.max(5,tk.length?tk[tk.length-1]:0);
+  var names=[];
+  tk.forEach(function(n){(d.tests[n].marks||[]).forEach(function(m){if(names.indexOf(m.n)===-1)names.push(m.n);});});
+  var order=students.filter(function(s){return s.class===d.class;}).map(function(s){return s.name;});
+  names.sort(function(a,b){var ia=order.indexOf(a),ib=order.indexOf(b);if(ia===-1)ia=9999;if(ib===-1)ib=9999;return (ia-ib)||a.localeCompare(b);});
+  var totalMM=0;tk.forEach(function(n){totalMM+=Number(d.tests[n].mm)||0;});
+  var rows=names.map(function(nm){
+    var vals=[],tot=0;
+    for(var i=1;i<=cols;i++){
+      var t=d.tests[i],v='';
+      if(t){var f=(t.marks||[]).find(function(m){return m.n===nm;});if(f)v=f.v;}
+      vals.push(v);
+      if(/^[0-9]+(\.[0-9]+)?$/.test(v)) tot+=parseFloat(v);
+    }
+    return {name:nm,vals:vals,tot:tot};
+  });
+  rows.forEach(function(r){r.rank=1+rows.filter(function(x){return x.tot>r.tot;}).length;});
+  var span=cols+1,mSpan=Math.ceil(span/2),cSpan=span-mSpan,i,h='';
+  h+='<table class="reg">';
+  h+='<tr><td colspan="'+(2+span)+'" class="reg-title">GSRM SCHOOL (TARANAGAR)</td></tr>';
+  h+='<tr><td colspan="2" class="reg-l">SUBJECT - <b>'+esc(d.subject)+'</b></td><td colspan="'+mSpan+'" class="reg-l">MONTH - <b>'+MONTH_NAMES[parseInt(d.month.split('-')[1])-1].toUpperCase()+'</b></td><td colspan="'+cSpan+'" class="reg-l">CLASS <b>'+esc(d.class.toUpperCase())+'</b></td></tr>';
+  h+='<tr><td rowspan="2" class="reg-h" style="width:38px;">ROLL N</td><td rowspan="2" class="reg-h reg-name">STUDENT NAME</td>';
+  for(i=1;i<=cols;i++) h+='<td class="reg-h">'+i+'</td>';
+  h+='<td class="reg-h">TOTAL</td></tr><tr>';
+  for(i=1;i<=cols;i++){var tt=d.tests[i];h+='<td>{'+(tt?esc(tt.mm):'&nbsp;&nbsp;')+'}</td>';}
+  h+='<td>{'+(totalMM||'&nbsp;&nbsp;')+'}</td></tr>';
+  h+='<tr><td colspan="2" class="reg-date">DATE</td>';
+  for(i=1;i<=cols;i++){var t2=d.tests[i];h+='<td style="font-size:10px;">'+(t2?esc(recShortDate(t2.date)):'')+'</td>';}
+  h+='<td></td></tr>';
+  var n=Math.max(25,rows.length);
+  for(var k=0;k<n;k++){
+    var r=rows[k];
+    h+='<tr><td></td><td class="reg-name">'+(r?esc(r.name):'&nbsp;')+'</td>';
+    for(i=0;i<cols;i++) h+='<td>'+(r?esc(r.vals[i]):'')+'</td>';
+    var tc='';
+    if(r){tc=recFmt(r.tot);if(showPct&&totalMM) tc+='<div class="reg-pct">'+recFmt(r.tot/totalMM*100)+'%</div>';}
+    h+='<td style="font-weight:700;">'+tc+'</td>';
+    h+='<td class="reg-rankcol">'+((r&&r.rank<=3&&r.tot>0)?recOrd(r.rank)+' Rank':'')+'</td></tr>';
+  }
+  h+='</table>';
+  h+='<div class="reg-sign"><span>Sign.of subject teacher</span><span>Sign.of class teacher</span><span>Sign. &amp; Seal Head of the institution</span></div>';
+  return h;
+}
+
+function recRender(){
+  var el=document.getElementById('recView');
+  var sub=document.getElementById('recSub').value;
+  var d=recDocs.find(function(x){return x.subject===sub;});
+  recCur=d||null;
+  if(!d){document.getElementById('recActions').style.display='none';if(recDocs.length)el.innerHTML='<div class="card"><div class="empty">Subject chunein.</div></div>';return;}
+  var tk=Object.keys(d.tests).map(Number).sort(function(a,b){return a-b;});
+  el.innerHTML='<div class="card"><div class="reg-wrap" id="regArea">'+recTable(d,document.getElementById('recPct').checked)+'</div>'
+    +'<div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">'+tk.map(function(n){return '<button class="btn br bsm" onclick="recDelTest('+n+')">🗑️ Test '+n+' delete</button>';}).join('')+'</div></div>';
+  document.getElementById('recActions').style.display='block';
+}
+
+async function recDelTest(n){
+  var d=recCur;if(!d) return;
+  if(!confirm('Test '+n+' ka record delete karein?')) return;
+  var tests=d.tests;delete tests[n];
+  try{
+    if(!Object.keys(tests).length) await db.collection('ps_records').doc(d.id).delete();
+    else await db.collection('ps_records').doc(d.id).update({tests:tests});
+    await recLoad();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+function recPrint(){
+  var a=document.getElementById('regArea');
+  if(!a){alert('Pehle subject chunein.');return;}
+  document.getElementById('printHost').innerHTML=a.innerHTML;
+  window.print();
+}
+window.addEventListener('afterprint',function(){var h=document.getElementById('printHost');if(h)h.innerHTML='';});
+// ===== END RECORD REGISTER =====
+
 init();
 </script>
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 </script>
 </body>
 </html>
