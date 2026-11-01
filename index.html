@@ -691,7 +691,8 @@ function recTable(d,showPct){
     }
     return {name:nm,vals:vals,tot:tot};
   });
-  rows.forEach(function(r){r.rank=1+rows.filter(function(x){return x.tot>r.tot;}).length;});
+  var distinct=[];rows.forEach(function(r){if(distinct.indexOf(r.tot)===-1)distinct.push(r.tot);});distinct.sort(function(a,b){return b-a;});
+  rows.forEach(function(r){r.rank=distinct.indexOf(r.tot)+1;});
   var span=cols+1,mSpan=Math.ceil(span/2),cSpan=span-mSpan,i,h='';
   h+='<table class="reg">';
   h+='<tr><td colspan="'+(2+span)+'" class="reg-title">GSRM SCHOOL (TARANAGAR)</td></tr>';
