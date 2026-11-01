@@ -75,6 +75,7 @@ table.reg td{border:1px solid #333;padding:4px 5px;text-align:center;height:24px
 .reg-date{text-align:right!important;font-size:10px;}
 .reg-pct{font-size:9px;color:#555;}
 table.reg td.reg-rankcol{border:none!important;text-align:left!important;font-size:11px;color:#c00;white-space:nowrap;}
+.reg-head{text-align:center;font-family:Arial,sans-serif;font-weight:800;font-size:16px;letter-spacing:1px;margin-bottom:6px;color:#000;}
 .reg-sign{display:flex;justify-content:space-between;margin-top:14px;font-size:11px;font-family:Arial,sans-serif;}
 @page{size:A4;margin:10mm;}
 @media print{
@@ -694,6 +695,7 @@ function recTable(d,showPct){
   var distinct=[];rows.forEach(function(r){if(distinct.indexOf(r.tot)===-1)distinct.push(r.tot);});distinct.sort(function(a,b){return b-a;});
   rows.forEach(function(r){r.rank=distinct.indexOf(r.tot)+1;});
   var span=cols+1,mSpan=Math.ceil(span/2),cSpan=span-mSpan,i,h='';
+  h+='<div class="reg-head">MONTHLY TEST REPORT</div>';
   h+='<table class="reg">';
   h+='<tr><td colspan="'+(2+span)+'" class="reg-title">GSRM SCHOOL (TARANAGAR)</td></tr>';
   h+='<tr><td colspan="2" class="reg-l">SUBJECT - <b>'+esc(d.subject)+'</b></td><td colspan="'+mSpan+'" class="reg-l">MONTH - <b>'+MONTH_NAMES[parseInt(d.month.split('-')[1])-1].toUpperCase()+'</b></td><td colspan="'+cSpan+'" class="reg-l">CLASS <b>'+esc(d.class.toUpperCase())+'</b></td></tr>';
